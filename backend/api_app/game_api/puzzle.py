@@ -6,7 +6,7 @@ import openai
 from dotenv import load_dotenv
 #from api_app.services.image_generate import generate_image
 
-# Set your API keys from environment variables
+# Set your API keys from environment variables comment added to commit
 load_dotenv()
 openai.api_key = os.getenv("OPENAI_API_KEY")
 GETIMG_API_KEY = os.getenv("GETIMG_API_KEY")
