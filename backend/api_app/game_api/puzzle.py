@@ -24,7 +24,7 @@ def generate_image(prompt_str: str) -> str:
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": f"{GETIMG_API_KEY}",
+        "Authorization": f"Bearer {GETIMG_API_KEY}",
     }
     payload = {
         "prompt": f"Generate a high-quality image of a {prompt_str}",
@@ -46,7 +46,7 @@ def generate_image(prompt_str: str) -> str:
     except Exception as e:
         raise Exception(f"Error generating image for '{prompt_str}': {e}")
 
-def connect_puzzle(word: str) -> dict:
+def connectpuzzle(word: str) -> dict:
     """
     Given a word, uses OpenAI's ChatCompletion API to:
       1. Generate two distinct lists of 4 unique objects/characters.

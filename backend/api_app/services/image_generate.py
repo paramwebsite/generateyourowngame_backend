@@ -28,7 +28,7 @@ def generate_image(prompt: str) -> dict:
     headers = {
         "Accept": "application/json",
         "Content-Type": "application/json",
-        "Authorization": f" {api_key}"
+        "Authorization": f"Bearer {api_key}"
     }
 
     # Define the payload for the POST request
