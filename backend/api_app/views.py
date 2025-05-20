@@ -134,7 +134,7 @@ def process_and_connect_game(request):
     game_func = GAME_FUNCTIONS.get(selected_path.lower())
     if not game_func:
         return JsonResponse({"success": False, 'error': f"No game logic found for path '{selected_path}'."}, status=400)
-    print("game func called")
+    
 
     # Call the appropriate game function
     try:
