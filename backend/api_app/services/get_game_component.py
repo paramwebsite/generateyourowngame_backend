@@ -95,10 +95,10 @@ def classify_word(prompt: str) -> dict:
         # Call OpenAI's ChatCompletion API
         try:
             response = openai.chat.completions.create(
-                model="gpt-3.5-turbo",
+                model="gpt-4o-mini-2024-07-18",
                 messages=[{"role": "user", 
                         "content": prompt_message}],
-                temperature=0.5,
+                temperature=0.7,
             )
         except Exception as api_err:
             raise Exception(f"OpenAI API call failed: {api_err}")

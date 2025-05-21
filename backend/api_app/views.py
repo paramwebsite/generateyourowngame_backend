@@ -90,10 +90,16 @@ from .services.wordfilter import filter_harmful_word
 from .services.get_game_component import classify_word
 from api_app.game_api.puzzle import connectpuzzle
 from api_app.game_api.dino import dino
+from api_app.game_api.truefalse import true_false_game
+from api_app.game_api.multiplechoice import multiple_choice_game
+from api_app.game_api.oddoneout import odd_one_out_game
 
 GAME_FUNCTIONS = {
     "connectpuzzle": connectpuzzle,
     "dino": dino,
+    "truefalse": true_false_game,
+    "multiplechoice": multiple_choice_game,
+    "oddoneout": odd_one_out_game,
     # add other game mappings here
 }
 
