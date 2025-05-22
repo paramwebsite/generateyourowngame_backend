@@ -77,7 +77,7 @@ def connectpuzzle(word: str) -> dict:
     )
     try:
         openai_response1 = openai.chat.completions.create(
-            model="gpt-4o-mini-2024-07-18",
+            model="gpt-3.5-turbo",
             messages=[{"role": "user", "content": prompt1}],
             temperature=0.7,
         )
