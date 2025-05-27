@@ -93,6 +93,10 @@ from api_app.game_api.dino import dino
 from api_app.game_api.truefalse import true_false_game
 from api_app.game_api.multiplechoice import multiple_choice_game
 from api_app.game_api.oddoneout import odd_one_out_game
+from api_app.game_api.flipword import flip_memory_game
+from api_app.game_api.arrange_picture import arrange_picture_game
+from api_app.game_api.wordsearch import generate_word_search_names
+from api_app.game_api.word_association import validate_word_associations
 
 GAME_FUNCTIONS = {
     "connectpuzzle": connectpuzzle,
@@ -100,6 +104,10 @@ GAME_FUNCTIONS = {
     "truefalse": true_false_game,
     "multiplechoice": multiple_choice_game,
     "oddoneout": odd_one_out_game,
+    "cardgame": flip_memory_game,
+    "arrangemain": arrange_picture_game,
+    "wordsearch": generate_word_search_names,
+    "wordassociationgame":validate_word_associations,
     # add other game mappings here
 }
 

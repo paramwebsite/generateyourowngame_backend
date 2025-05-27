@@ -18,7 +18,7 @@ data_structure = {
         "food": ["food"],
     },
     "humanNames": {
-        "namegame": ["WordAssociationGame", "wordSearchforfood"],
+        "namegame": ["wordassociationgame", "wordsearch"],
     },
     "organisation": {
         "organisation": ["decode", "arrangemain"]
