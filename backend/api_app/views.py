@@ -207,31 +207,29 @@ def process_and_connect_game(request):
 
     category    = classification["category"]
     subcategory = classification["subcategory"]
-    chosen_path = classification["path"]
-
-    # 4. No-repeat logic in the view itself
+    # 3) pick the path here—strict alternation based on session
+    options   = data_structure[category][subcategory]
     last_path = request.session.get("last_game_path")
-    if last_path is not None:
-        if last_path == chosen_path:
-            # get all possible paths for this cat/subcat
-            options = data_structure[category][subcategory]
-            # filter out the last one
-            alternatives = [p for p in options if p != last_path]
-            if alternatives:
-                chosen_path = random.choice(alternatives)
-                classification["path"] = chosen_path
-            # else: if no alternative, we just stick with chosen_path
+
+    if last_path and last_path in options:
+        # exactly one “other” in a two-option list; more generally, pick a random
+        others = [p for p in options if p != last_path]
+        chosen_path = others[0] if len(others) == 1 else random.choice(others)
+    else:
+        # first request ever, or category changed: just pick randomly
+        chosen_path = random.choice(options)
 
     # store for next time
     request.session["last_game_path"] = chosen_path
+    classification["path"] = chosen_path
 
-    # 5. Handle word-association as a special “delayed” case
+    # 4) special “delayed” case
     if chosen_path.lower() == "wordassociationgame":
         return JsonResponse({
-            "success": True,
+            "success":    True,
             "classification": classification,
-            "prompt": word,
-            "game_type": "delayed"
+            "prompt":     word,
+            "game_type":  "delayed"
         })
 
     # 6. Route to the appropriate game function
