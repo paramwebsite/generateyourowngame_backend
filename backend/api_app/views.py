@@ -145,12 +145,23 @@ def process_and_connect_game(request):
     if not selected_path:
         return JsonResponse({"success": False, 'error': 'No game path found for the word.'}, status=400)
 
+
     game_func = GAME_FUNCTIONS.get(selected_path.lower())
     if not game_func:
         return JsonResponse({"success": False, 'error': f"No game logic found for path '{selected_path}'."}, status=400)
     
 
-    # Call the appropriate game function
+    # SPECIAL CASE: wordassociationgame
+    if selected_path.lower() == "wordassociationgame":
+        prompt = word  # You may use the input word as prompt
+        return JsonResponse({
+            "success": True,
+            "classification": classification_result,
+            "prompt": prompt,
+            "game_type": "delayed"  # optional hint for frontend
+        })
+
+    # NORMAL CASE: other games
     try:
         game_result = game_func(word)
     except Exception as e:
@@ -165,3 +176,22 @@ def process_and_connect_game(request):
     }
 
     return JsonResponse(response_data)
+
+@csrf_exempt
+def validate_word_association_view(request):
+    if request.method != "POST":
+        return HttpResponseNotAllowed(["POST"])
+
+    try:
+        data = json.loads(request.body)
+        entries = data.get("entries")
+        if not entries:
+            return JsonResponse({"error": "Missing 'entries' in request"}, status=400)
+
+        result = validate_word_associations(entries)
+        all_valid = all(item["valid"] for item in result["results"])
+        result["status"] = "correct" if all_valid else "incorrect"
+        return JsonResponse(result)
+
+    except Exception as e:
+        return JsonResponse({"error": str(e)}, status=500)
