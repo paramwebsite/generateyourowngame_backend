@@ -85,9 +85,12 @@
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 import json
+import random
+
 from django.shortcuts import render
 from .services.wordfilter import filter_harmful_word
-from .services.get_game_component import classify_word
+from .services.get_game_component import classify_word, data_structure
+
 from api_app.game_api.puzzle import connectpuzzle
 from api_app.game_api.dino import dino
 from api_app.game_api.truefalse import true_false_game
@@ -111,71 +114,145 @@ GAME_FUNCTIONS = {
     # add other game mappings here
 }
 
+# @csrf_exempt
+# def process_and_connect_game(request):
+#     if request.method != "POST":
+#         return HttpResponseNotAllowed(["POST"])
+
+#     try:
+#         data = json.loads(request.body)
+#     except json.JSONDecodeError:
+#         return JsonResponse({'error': 'Invalid JSON'}, status=400)
+
+#     word = data.get('word', '')
+#     print("word", word)
+
+#     # Validate word presence and length
+#     if not word or len(word.split()) > 3:
+#         return JsonResponse({"success": False, 'error': 'Please provide 1-3 words.'}, status=400)
+#     print("word length pass")
+
+#     # Filter harmful words
+#     category = filter_harmful_word(word)
+#     if category != "not harmful":
+#         return JsonResponse({"success": False, 'error': 'The word is harmful.'}, status=400)
+#     else:
+#         print("word filter pass")
+
+#     # Classify the word to get the game path and other info
+#     classification_result = classify_word(word)
+#     print("classification:", classification_result)
+
+#     selected_path = classification_result.get("path")
+#     print("path:", selected_path)
+#     if not selected_path:
+#         return JsonResponse({"success": False, 'error': 'No game path found for the word.'}, status=400)
+
+
+#     game_func = GAME_FUNCTIONS.get(selected_path.lower())
+#     if not game_func:
+#         return JsonResponse({"success": False, 'error': f"No game logic found for path '{selected_path}'."}, status=400)
+    
+
+#     # SPECIAL CASE: wordassociationgame
+#     if selected_path.lower() == "wordassociationgame":
+#         prompt = word  # You may use the input word as prompt
+#         return JsonResponse({
+#             "success": True,
+#             "classification": classification_result,
+#             "prompt": prompt,
+#             "game_type": "delayed"  # optional hint for frontend
+#         })
+
+#     # NORMAL CASE: other games
+#     try:
+#         game_result = game_func(word)
+#     except Exception as e:
+#         return JsonResponse({"success": False, 'error': f"Game processing error: {str(e)}"}, status=500)
+#     print("game func called")
+
+#     # Return combined response
+#     response_data = {
+#         "success": True,
+#         "classification": classification_result,
+#         "game_data": game_result,
+#     }
+
+#     return JsonResponse(response_data)
+
 @csrf_exempt
 def process_and_connect_game(request):
     if request.method != "POST":
         return HttpResponseNotAllowed(["POST"])
 
+    # 1. Parse JSON
     try:
-        data = json.loads(request.body)
+        payload = json.loads(request.body)
     except json.JSONDecodeError:
-        return JsonResponse({'error': 'Invalid JSON'}, status=400)
+        return JsonResponse({"error": "Invalid JSON"}, status=400)
 
-    word = data.get('word', '')
-    print("word", word)
-
-    # Validate word presence and length
+    word = payload.get("word", "").strip()
     if not word or len(word.split()) > 3:
-        return JsonResponse({"success": False, 'error': 'Please provide 1-3 words.'}, status=400)
-    print("word length pass")
+        return JsonResponse({"success": False, "error": "Please provide 1-3 words."}, status=400)
 
-    # Filter harmful words
-    category = filter_harmful_word(word)
-    if category != "not harmful":
-        return JsonResponse({"success": False, 'error': 'The word is harmful.'}, status=400)
-    else:
-        print("word filter pass")
+    # 2. Harmful-word filter
+    if filter_harmful_word(word) != "not harmful":
+        return JsonResponse({"success": False, "error": "The word is harmful."}, status=400)
 
-    # Classify the word to get the game path and other info
-    classification_result = classify_word(word)
-    print("classification:", classification_result)
+    # 3. Classify (category, subcategory, initial path)
+    try:
+        classification = classify_word(word)
+    except Exception as e:
+        return JsonResponse({"success": False, "error": f"Classification error: {e}"}, status=500)
 
-    selected_path = classification_result.get("path")
-    print("path:", selected_path)
-    if not selected_path:
-        return JsonResponse({"success": False, 'error': 'No game path found for the word.'}, status=400)
+    category    = classification["category"]
+    subcategory = classification["subcategory"]
+    chosen_path = classification["path"]
 
+    # 4. No-repeat logic in the view itself
+    last_path = request.session.get("last_game_path")
+    if last_path is not None:
+        if last_path == chosen_path:
+            # get all possible paths for this cat/subcat
+            options = data_structure[category][subcategory]
+            # filter out the last one
+            alternatives = [p for p in options if p != last_path]
+            if alternatives:
+                chosen_path = random.choice(alternatives)
+                classification["path"] = chosen_path
+            # else: if no alternative, we just stick with chosen_path
 
-    game_func = GAME_FUNCTIONS.get(selected_path.lower())
-    if not game_func:
-        return JsonResponse({"success": False, 'error': f"No game logic found for path '{selected_path}'."}, status=400)
-    
+    # store for next time
+    request.session["last_game_path"] = chosen_path
 
-    # SPECIAL CASE: wordassociationgame
-    if selected_path.lower() == "wordassociationgame":
-        prompt = word  # You may use the input word as prompt
+    # 5. Handle word-association as a special “delayed” case
+    if chosen_path.lower() == "wordassociationgame":
         return JsonResponse({
             "success": True,
-            "classification": classification_result,
-            "prompt": prompt,
-            "game_type": "delayed"  # optional hint for frontend
+            "classification": classification,
+            "prompt": word,
+            "game_type": "delayed"
         })
 
-    # NORMAL CASE: other games
+    # 6. Route to the appropriate game function
+    game_func = GAME_FUNCTIONS.get(chosen_path.lower())
+    if not game_func:
+        return JsonResponse(
+            {"success": False, "error": f"No game logic for path '{chosen_path}'."},
+            status=400
+        )
+
     try:
-        game_result = game_func(word)
+        game_data = game_func(word)
     except Exception as e:
-        return JsonResponse({"success": False, 'error': f"Game processing error: {str(e)}"}, status=500)
-    print("game func called")
+        return JsonResponse({"success": False, "error": f"Game error: {e}"}, status=500)
 
-    # Return combined response
-    response_data = {
+    # 7. Return combined response
+    return JsonResponse({
         "success": True,
-        "classification": classification_result,
-        "game_data": game_result,
-    }
-
-    return JsonResponse(response_data)
+        "classification": classification,
+        "game_data": game_data
+    })
 
 @csrf_exempt
 def validate_word_association_view(request):
