@@ -1,87 +1,3 @@
-# from django.shortcuts import render
-
-# # Create your views here.
-# import json
-# from .services.wordfilter import filter_harmful_word
-# from .services.get_game_component import classify_word
-# #from .game_api.puzzle import connect_puzzle
-# from api_app.game_api.puzzle import connect_puzzle
-# from api_app.game_api.dino import dino
-# from django.http import JsonResponse, HttpResponseNotAllowed
-# from django.views.decorators.csrf import csrf_exempt
-
-# GAME_FUNCTIONS = {
-#     "puzzle": connect_puzzle,
-#     "dino": dino,
-#     # add more mappings like "snake": connect_snake, etc.
-# }
-
-# @csrf_exempt  # For development; use proper CSRF protection in production.
-
-# def process_word(request):
-#     if request.method == 'POST':
-#         try:
-#             data = json.loads(request.body)
-#         except json.JSONDecodeError:
-#             return JsonResponse({'error': 'Invalid JSON'}, status=400)
-        
-#         """
-#         checkpoint 1
-#         word get
-#         word count
-#         word filter
-#         """
-#         word = data.get('word', '')
-#         # validate word input
-#         if not word or len(word.split()) > 3:
-#             return JsonResponse({"success": False,'error': 'Please provide 1-3 words.'}, status=400)
-
-#         # Filter harmful words
-#         category = filter_harmful_word(word)
-#         if category != "not harmful":
-#             # log_to_csv(word, category)
-#             return JsonResponse({"success": False,'error': 'The word is harmful.'}, status=400)
-        
-#         print("checkpoint 1 clear")
-
-#         """
-#         checkpoint 2
-#         get game component 
-#         """
-#         word_class=classify_word(word)
-#         response_data = word_class
-
-#         print("checkpoint 2 clear")
-
-#         return JsonResponse(response_data)
-    
-#     else:
-#         return JsonResponse({'error': 'Invalid HTTP method, only POST allowed'}, status=405)
-
-
-# @csrf_exempt 
-# def connectpuzzle(request):
-#     if request.method != "POST":
-#         return HttpResponseNotAllowed(["POST"])
-    
-#     try:
-#         body = json.loads(request.body)
-#     except Exception as e:
-#         return JsonResponse({"error": f"Invalid JSON: {e}"}, status=400)
-    
-#     word = body.get("word")
-
-#     if not word:
-#         return JsonResponse({"error": "No word provided"}, status=400)
-    
-#     try:
-#         result = connect_puzzle(word)
-#         return JsonResponse(result)
-#     except Exception as e:
-#         return JsonResponse({"error": str(e)}, status=500)
-
-
-
 from django.http import JsonResponse, HttpResponseNotAllowed
 from django.views.decorators.csrf import csrf_exempt
 import json
@@ -100,6 +16,7 @@ from api_app.game_api.flipword import flip_memory_game
 from api_app.game_api.arrange_picture import arrange_picture_game
 from api_app.game_api.wordsearch import generate_word_search_names
 from api_app.game_api.word_association import validate_word_associations
+from api_app.game_api.unscattered import word_hint_game
 
 GAME_FUNCTIONS = {
     "connectpuzzle": connectpuzzle,
@@ -111,6 +28,7 @@ GAME_FUNCTIONS = {
     "arrangemain": arrange_picture_game,
     "wordsearch": generate_word_search_names,
     "wordassociationgame":validate_word_associations,
+    "unscatteredpuzzle": word_hint_game,
     # add other game mappings here
 }
 
@@ -194,11 +112,11 @@ def process_and_connect_game(request):
     word = payload.get("word", "").strip()
     if not word or len(word.split()) > 3:
         return JsonResponse({"success": False, "error": "Please provide 1-3 words."}, status=400)
-
+    print("1. word length passed:",word)
     # 2. Harmful-word filter
     if filter_harmful_word(word) != "not harmful":
         return JsonResponse({"success": False, "error": "The word is harmful."}, status=400)
-
+    print("2. harmfulcheck passed")
     # 3. Classify (category, subcategory, initial path)
     try:
         classification = classify_word(word)
@@ -222,15 +140,18 @@ def process_and_connect_game(request):
     # store for next time
     request.session["last_game_path"] = chosen_path
     classification["path"] = chosen_path
+    print("3. classification passed:", classification)
 
     # 4) special “delayed” case
     if chosen_path.lower() == "wordassociationgame":
+        print("wordassociation game")
         return JsonResponse({
             "success":    True,
             "classification": classification,
             "prompt":     word,
             "game_type":  "delayed"
         })
+    
 
     # 6. Route to the appropriate game function
     game_func = GAME_FUNCTIONS.get(chosen_path.lower())
@@ -244,6 +165,7 @@ def process_and_connect_game(request):
         game_data = game_func(word)
     except Exception as e:
         return JsonResponse({"success": False, "error": f"Game error: {e}"}, status=500)
+    print("4. game func called")
 
     # 7. Return combined response
     return JsonResponse({
